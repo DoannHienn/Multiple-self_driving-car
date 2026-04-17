@@ -103,12 +103,14 @@ def main():
             controller.prev_cmd = cmd
 
         # BƯỚC 4: Vẽ Giao diện (Truyền thêm active_objects và current_speed)
+        # BƯỚC 4: Vẽ Giao diện 
         elapsed_time = time.time() - start_time
         fps = 1.0 / elapsed_time if elapsed_time > 0 else 99.0
         
         final_frame = overlay.draw(
             yolo_drawn_frame, poly_pts, use_dynamic_roi, 
-            heading, cmd, active_objects, current_speed, fps
+            heading, cmd, active_objects, current_speed, fps,
+            controller.acc_enabled  # <--- BẮT BUỘC PHẢI CÓ BIẾN NÀY ĐỂ UI CẬP NHẬT
         )
 
         cv2.imshow('ACE SYSTEM - OBJECT AVOIDANCE', final_frame)
