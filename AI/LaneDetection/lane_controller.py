@@ -4,8 +4,8 @@ class LaneController:
     def __init__(self):
         # ==== DEADBAND & THRESHOLDS ====
         self.theta_thresh       = 2.1
-        self.pos_deadband_m     = 0.008
-        self.head_deadband_deg  = 0.4
+        self.pos_deadband_m     = 0.01
+        self.head_deadband_deg  = 0.5
         
         # ==== SERVO LIMITS & PROTECTION ====
         self.alpha_limit        = 54
@@ -32,7 +32,7 @@ class LaneController:
         self.trim_sm            = float(self.steer_trim_deg)
         
         # ==== SPEED CONTROL ====
-        self.base_speed         = 80
+        self.base_speed         = 78
         
         # ==== INTERNAL STATE ====
         self.alpha_sm           = None
@@ -128,11 +128,11 @@ class LaneController:
             K_pos  = 7.7 * self.left_boost
             K_d    = 0.35
             limit  = self.alpha_limit_left
-            local_filter = 0.45 #0.35
+            local_filter = 0.35 #0.35
             local_slew   = 22.0 #15.0
             
         else: # STRAIGHT (Đi thẳng)
-            K_head, K_pos, K_d = 0.7, 3.5, 0.65 
+            K_head, K_pos, K_d = 0.7, 3, 0.65 
             limit        = self.alpha_limit
             local_filter = 0.25 
             local_slew   = 17.0 # Cho phép vô lăng vẫy nhanh để sửa sai kịp thời
@@ -147,13 +147,17 @@ class LaneController:
         u_i = np.clip(self.pos_i_state * self.pos_i_gain, -self.pos_i_clip_deg, self.pos_i_clip_deg)
         
         # ---------------------------------------------------------
-        # 7. CONTROL LAW (PID THUẦN TÚY - KHÔNG HÀM BẬC 2)
+        # 7. CONTROL LAW (PID TỐI ƯU CÓ TÍNH TOÁN DẠT NGANG)
         # ---------------------------------------------------------
-        u = K_head*head_err + K_pos*pos_err + K_d*d_head + u_i
+        # K_d bây giờ sẽ nhân với vận tốc dạt ngang (_pos_d_ema) kết hợp 1 chút góc xoay (d_head)
+        # Điều này giúp xe có sức ì, chống lại các pha lạng lách vô cớ
+        d_term = (K_d * d_head) + (K_pos * 0.15 * self._pos_d_ema)
         
-        # Chỉ dùng PID thuần túy, TUYỆT ĐỐI KHÔNG dùng (u_abs*u_abs) nữa để chống giật lái
+        u = K_head*head_err + K_pos*pos_err + d_term + u_i
+        
         u_shaped = u 
         
+        # ... (Phần bên dưới giữ nguyên code của bạn)
         if head_err < -self.theta_thresh:  
             u_shaped *= 0.90
             
